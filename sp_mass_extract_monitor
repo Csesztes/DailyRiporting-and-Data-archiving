@@ -1,4 +1,5 @@
 ALTER procedure [dbo].[sp_mass_run_extract_monitor]
+	@show_already_run bit
 AS
 BEGIN
 	
@@ -26,7 +27,7 @@ BEGIN
 	while @counter <= @lastrow
 	begin
 		set @currentVal = (select [Jobname] from @TBL_JOBS_CONTAINER where [RowNum] = @counter)
-		exec [sp_extract_monitor] @currentVal 
+		exec [sp_extract_monitor] @currentVal , @show_already_run
 
 
 		set @counter = @counter +1
