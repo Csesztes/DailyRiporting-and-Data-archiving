@@ -1,5 +1,10 @@
+USE [dummy]
+GO
+
+
 ALTER PROCEDURE [dbo].[sp_extract_monitor]
-@SQL_TASK NVARCHAR(30)
+	@SQL_TASK NVARCHAR(30),
+	@show_already_ran_tasks BIT
 AS
 BEGIN
 	
@@ -32,8 +37,42 @@ BEGIN
 			)
 
 	if @allRecords !=@todayRecors
-		BEGIN
+		if @show_already_ran_tasks = 1
+			BEGIN
 
+				SELECT   
+					'' as  [Ran already?]
+					,cast(@todayRecors as nvarchar(10)) +'/' + cast(@allRecords as nvarchar(10)) as [# ran display / # total displays]
+					,a.*
+					,'' as [ROWS]
+					,'' as [RUNTIME]
+				FROM 
+					dummy.dbo.extracts_all  a
+				where 
+					a.ID not in (select ID from @container)
+					AND USEDIN like '' + @SQL_TASK + '%'
+			
+
+				Union all
+
+				SELECT 
+					'Ran Today' as [Ran already?]
+					,cast(@todayRecors as nvarchar(10)) +'/' + cast(@allRecords as nvarchar(10)) as [# ran display / # total displays]
+					,a.* 
+					,b.[ROWS]
+					,b.RUNTIME
+				FROM 
+					dummy.dbo.extracts_all a
+				left join
+					dummy.dbo.extract_log b on a.ID = b.ID
+				where 
+					a.ID in (select ID from @container)
+					AND CAST(b.TS as date) = @TODAY
+					AND USEDIN like '' + @SQL_TASK + '%'
+				order by [Ran already?] asc, [AWS] ASC
+
+			END
+		else
 			SELECT   
 				'' as  [Ran already?]
 				,cast(@todayRecors as nvarchar(10)) +'/' + cast(@allRecords as nvarchar(10)) as [# ran display / # total displays]
@@ -45,29 +84,11 @@ BEGIN
 			where 
 				a.ID not in (select ID from @container)
 				AND USEDIN like '' + @SQL_TASK + '%'
-			
-
-			Union all
-
-			SELECT 
-				'Ran Today' as [Ran already?]
-				,cast(@todayRecors as nvarchar(10)) +'/' + cast(@allRecords as nvarchar(10)) as [# ran display / # total displays]
-				,a.* 
-				,b.[ROWS]
-				,b.RUNTIME
-			FROM 
-				dummy.dbo.extracts_all a
-			left join
-				dummy.dbo.extract_log b on a.ID = b.ID
-			where 
-				a.ID in (select ID from @container)
-				AND CAST(b.TS as date) = @TODAY
-				AND USEDIN like '' + @SQL_TASK + '%'
 			order by [Ran already?] asc, [AWS] ASC
-
-		END
 	else
 		BEGIN
 			PRINT 'All tasks have been run for  ' + @SQL_TASK + ' job!'
 		END
 END
+
+
